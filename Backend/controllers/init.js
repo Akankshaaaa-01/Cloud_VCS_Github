@@ -1,4 +1,4 @@
-const fs = require("fs").promises;  // file system of Node (async version)
+const fs = require("fs").promises;  // file system of Node (async version , can use await due to promises)
 const path = require("path");       // path handling
 
 async function initRepo() {

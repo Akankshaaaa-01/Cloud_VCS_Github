@@ -8,6 +8,7 @@ const {Server}= require("socket.io");
 const mainRouter=require("./routes/main.router")
 
 const yargs = require('yargs');
+//Yargs is a Node.js library used to parse command-line arguments and build interactive CLI applications. It simplifies argument handling, provides validation, and allows defining commands in a structured way
 const { hideBin } = require('yargs/helpers');
 
 // import controllers
@@ -20,7 +21,7 @@ const { revertRepo } = require("./controllers/revert");
 
 dotenv.config();
 // CLI setup
-yargs(hideBin(process.argv))
+yargs(hideBin(process.argv)) //removes the first two default arguments (node path and script path) from process.argv,
 
 .command("start","Starts a new Server",{},startServer)
 // INIT
