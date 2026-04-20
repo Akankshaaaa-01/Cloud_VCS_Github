@@ -24,7 +24,7 @@ const UserSchema = new Schema({
     default: null   // normal users ke liye null rahega
   },
 
-  // Google se photo bhi aa sakti hai
+
   avatar: {
     type: String,
     default: null
