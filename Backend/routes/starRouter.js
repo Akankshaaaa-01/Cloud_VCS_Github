@@ -1,7 +1,7 @@
 // starRouter.js
 const express = require("express");
 const { toggleStar, getStargazers } = require("../controllers/starController");
-const authenticateMiddleware = require("../middleware/authenticateMiddleware");
+const { authenticateMiddleware } = require("../middleware/authenticateMiddleware");
 
 const starRouter = express.Router();
 

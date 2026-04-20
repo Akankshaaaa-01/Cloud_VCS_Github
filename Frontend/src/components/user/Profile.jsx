@@ -1,131 +1,188 @@
-import { useState,useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
-import profileImg from "../../assets/image1.png"; // dummy avatar
 import Navbar from "../Navbar";
 import HeatMapProfile from "./HeatMap";
-
+import api from "../../axiosConfig";
+import profileImg from "../../assets/image1.png"; 
 export default function Profile() {
+  const navigate = useNavigate();
 
-  const Navigate=useNavigate();
-  const [userDetails,setUserDetails] =useState("");
+  const [userDetails, setUserDetails] = useState(null);
+  const [myRepos, setMyRepos] = useState([]);
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
 
-  useEffect(()=>{
-    const fetchUserDetails =async()=>{
-      const userId= localStorage.getItem("userId");
-      if(userId){
-        try{
-          const response= await axios.get(`http://localhost:3002/userProfile/${userId}`)
-          setUserDetails(response.data);
-        }catch(err){
-          console.error("Cannot fetch user Details")
-        }
-      }
-    };
+  const userId = localStorage.getItem("userId");
 
-    fetchUserDetails(); 
-  },[])
+  useEffect(() => {
+    fetchUserDetails();
+    fetchMyRepos();
+    fetchFollowData();
+  }, []);
+
+  const fetchUserDetails = async () => {
+    try {
+      const res = await api.get(`/userProfile/${userId}`);
+      setUserDetails(res.data);
+    } catch (err) {
+      console.error("User fetch error");
+    }
+  };
+
+  const fetchMyRepos = async () => {
+    try {
+      const res = await api.get(`/repo/user/${userId}`);
+      setMyRepos(res.data.repositories || []);
+    } catch (err) {
+      console.error("Repo fetch error");
+    }
+  };
+
+  const fetchFollowData = async () => {
+    try {
+      const res = await api.get(`/follow/${userId}/data`);
+      setFollowers(res.data.followers || []);
+      setFollowing(res.data.following || []);
+    } catch (err) {
+      console.error("Follow fetch error");
+    }
+  };
+
+  if (!userDetails) return null;
 
   return (
-    <div className="bg-gray-900 min-h-screen text-white">
-        <Navbar/>
-      {/* 🔹 COVER IMAGE */}
-      <div className="h-32 w-full ">
-      </div>
+    <div className="bg-[#0d1117] min-h-screen text-white">
+      <Navbar />
 
-      {/* 🔹 PROFILE SECTION */}
-      <div className="max-w-6xl mx-auto px-6">
+      <div className="max-w-5xl mx-auto px-6 py-8">
 
-        {/* profile image + info */}
-        <div className="flex items-end gap-6 -mt-12">
-
-          {/* Profile Image */}
-          <div className="w-24 h-24 rounded-full border-4 border-gray-900 overflow-hidden">
-            <img
-              src={profileImg}
-              alt="profile"
-              className="w-full h-full object-cover"
-            />
+        {/* HEADER */}
+        <div className="flex items-center gap-5 mb-6">
+          <div className="w-20 h-20 rounded-full bg-gray-700 flex items-center justify-center text-2xl font-bold">
+            <img src={profileImg}/>
           </div>
 
-          {/* User Info */}
           <div>
-            <h2 className="text-2xl font-semibold">{userDetails.username}</h2>
-            <p className="text-gray-400 text-sm">
-              Full Stack Developer 
+            <h2 className="text-xl font-semibold">
+              {userDetails.username}
+            </h2>
+
+            <p className="text-sm text-gray-400">
+              Joined {new Date(userDetails.createdAt).toLocaleDateString()}
             </p>
           </div>
-
         </div>
 
-        {/* 🔹 ACTION BUTTONS */}
-        <div className="mt-4 flex gap-3">
-          <button className="px-4 py-1.5 bg-green-600 rounded-md hover:bg-green-700">
+        {/* ACTIONS */}
+        <div className="flex gap-3 mb-8">
+          <button
+            onClick={() => navigate("/edit-profile")}
+            className="px-4 py-1.5 bg-emerald-600 rounded-md hover:bg-emerald-700 text-sm transition"
+          >
             Edit Profile
           </button>
-          <button className="px-4 py-1.5 border border-gray-600 rounded-md hover:bg-gray-800">
+
+          <button className="px-4 py-1.5 border border-gray-600 rounded-md hover:bg-gray-800 text-sm transition">
             Share
           </button>
         </div>
 
-        {/* 🔹 MAIN CONTENT */}
-        <div className="mt-8 flex gap-6">
+        <div className="flex gap-6">
 
-          {/* LEFT SIDEBAR */}
-          <aside className="w-1/4 space-y-4">
+          {/* LEFT */}
+          <aside className="w-64 space-y-4">
 
-            <div className="bg-slate-800 p-4 rounded-lg">
+            <div className="bg-[#1f2937] p-4 rounded-xl">
               <h3 className="font-semibold mb-2">About</h3>
               <p className="text-sm text-gray-400">
-                Aspiring engineer building cool stuff 
+                {userDetails.email}
               </p>
             </div>
 
-            <div className="bg-slate-800 p-4 rounded-lg">
+            <div className="bg-[#1f2937] p-4 rounded-xl">
               <h3 className="font-semibold mb-2">Stats</h3>
-              <p className="text-sm text-gray-400">Repos: 12</p>
-              <p className="text-sm text-gray-400">Followers: 34</p>
+
+              <p className="text-sm text-gray-400">
+                Repositories: {myRepos.length}
+              </p>
+              <p className="text-sm text-gray-400">
+                Followers: {followers.length}
+              </p>
+              <p className="text-sm text-gray-400">
+                Following: {following.length}
+              </p>
             </div>
 
           </aside>
 
           {/* CENTER */}
-          <main className="w-3/4">
+          <main className="flex-1 space-y-8">
 
-           <div className="bg-slate-800 p-4 rounded-lg mb-6">
-            <h3 className="text-lg font-semibold mb-3">
-              Contribution Activity
-            </h3>
-            <HeatMapProfile />
-          </div>
+            {/* Heatmap */}
+            <div className="bg-[#1f2937] p-5 rounded-xl">
+              <h3 className="font-semibold mb-3">
+                Contribution Activity
+              </h3>
+              <HeatMapProfile />
+            </div>
 
-            <h3 className="text-lg font-semibold mb-4">
-              Your Repositories
-            </h3>
+            {/* Repositories */}
+            <div>
+              <h3 className="font-semibold text-lg mb-3">
+                Your Repositories ({myRepos.length})
+              </h3>
 
-            <div className="space-y-3 mb-4">
-
-              {/* dummy repo */}
-              <div className="bg-slate-800 p-4 rounded-lg">
-                <h4 className="font-medium">Repo Name</h4>
-                <p className="text-sm text-gray-400">
-                  Description of repo
+              {myRepos.length === 0 ? (
+                <p className="text-sm text-gray-500">
+                  No repositories yet
                 </p>
-              </div>
+              ) : (
+                <div className="space-y-3">
+                  {myRepos.map((repo) => (
+                    <div
+                      key={repo._id}
+                      onClick={() => navigate(`/repo/${repo._id}`)}
+                      className="bg-[#1f2937] p-4 rounded-xl cursor-pointer transition hover:bg-[#273449] hover:shadow-lg hover:scale-[1.01]"
+                    >
+                      {/* TOP */}
+                      <div className="flex justify-between items-start">
 
-              <div className="bg-slate-800 p-4 rounded-lg">
-                <h4 className="font-medium">Another Repo</h4>
-                <p className="text-sm text-gray-400">
-                  Some description here
-                </p>
-              </div>
+                        <div>
+                          <h4 className="text-emerald-400 font-medium">
+                            {repo.name}
+                          </h4>
 
+                          <p className="text-sm text-gray-400 mt-1">
+                            {repo.description || "No description"}
+                          </p>
+                        </div>
+
+                        <span
+                          className={`text-xs px-2 py-0.5 rounded-full ${
+                            repo.visibility
+                              ? "bg-emerald-900 text-emerald-400"
+                              : "bg-red-900 text-red-400"
+                          }`}
+                        >
+                          {repo.visibility ? "Public" : "Private"}
+                        </span>
+                      </div>
+
+                      {/* BOTTOM */}
+                      <div className="mt-3 flex items-center gap-5 text-xs text-gray-400">
+                        <span>⭐ {repo.stars || 0}</span>
+                        <span>Issues: {repo.issues?.length || 0}</span>
+                      </div>
+
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </main>
 
         </div>
-
       </div>
     </div>
   );

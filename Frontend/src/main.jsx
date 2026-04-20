@@ -4,7 +4,7 @@ import './index.css'
 import { AuthProvider } from './authContext.jsx'
 import ProjectRoutes from './Routes.jsx'
 import { BrowserRouter as Router } from 'react-router-dom'
-
+import api from './axiosConfig';
 
 createRoot(document.getElementById('root')).render(
   <AuthProvider>

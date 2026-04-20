@@ -1,7 +1,7 @@
 // followRouter.js
 const express = require("express");
 const { toggleFollow, getFollowData } = require("../controllers/followController");
-const authenticateMiddleware = require("../middleware/authenticateMiddleware");
+const { authenticateMiddleware } = require("../middleware/authenticateMiddleware");
 
 const followRouter = express.Router();
 

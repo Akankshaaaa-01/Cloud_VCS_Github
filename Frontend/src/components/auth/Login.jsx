@@ -1,5 +1,5 @@
 import { useState,useEffect } from 'react';
-import axios from 'axios';
+import api from '../../axiosConfig';
 import { useAuth } from '../../authContext';
 import { Link,useNavigate } from 'react-router-dom';
 
@@ -22,7 +22,7 @@ const Login=()=>{
         e.preventDefault();
         try{
             setLoading(true);
-            const res= await axios.post("http://localhost:3002/login/",{
+            const res= await api.post("/login",{
                 email:email,
                 password:password,
             });
@@ -47,8 +47,8 @@ const Login=()=>{
         }
     }
  return(
-   <div className='bg-gray-900 min-h-screen flex items-center justify-center'>
-        <div className="bg-slate-800 p-6 rounded-lg w-80 shadow-lg ">
+   <div className='bg-[#0d1117] min-h-screen flex items-center justify-center'>
+        <div className="bg-slate-800/60 p-6 rounded-lg w-80 shadow-lg ">
     <h2 className='text-white text-lg text-center mb-6 font-semibold'>
         Sign In
     </h2>

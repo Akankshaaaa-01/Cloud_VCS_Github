@@ -1,6 +1,7 @@
 const express = require('express')
 const repoController = require("../controllers/repoController");
-const authenticateMiddleware = require("../middleware/authenticateMiddleware");
+const { authenticateMiddleware } = require("../middleware/authenticateMiddleware");
+
 const authorizeMiddleware = require("../middleware/authorizeMiddleware");
 
 const repoRouter=express.Router()
