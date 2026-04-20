@@ -4,11 +4,15 @@ const dotenv= require("dotenv");
 const User = require("../models/userModel");
 
 dotenv.config();
-const url=process.env.MONGO_URL
+
 
 async function signUp (req,res){
    try {
     const { username, email, password } = req.body;
+
+    if (!username || !email || !password) {
+    return res.status(400).json({ message: "All fields are required" });
+    }
 
     const existingUser = await User.findOne({ username });
     if (existingUser) {

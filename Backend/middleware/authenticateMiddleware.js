@@ -10,7 +10,7 @@ const authMiddleware =(req,res,next)=>{
     try{
         const authHeader=req.headers.authorization;
         // headers kya hote hain?
-        //  metadata of request
+        //  metadata of request, request ke saath aane wali extra info
         // Example:
         // Authorization: Bearer TOKEN
       if (!authHeader) {
