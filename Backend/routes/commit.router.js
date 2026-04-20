@@ -1,5 +1,5 @@
 const express = require("express");
-const { getCommitsByRepo } = require("../controllers/commitsController");
+const { getCommitsByRepo } = require("../controllers/commitController");
 
 const commitRouter = express.Router();
 
