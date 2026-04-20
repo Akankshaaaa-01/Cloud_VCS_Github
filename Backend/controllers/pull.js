@@ -9,11 +9,21 @@ async function pullRepo() {
   const commitsPath = path.join(repoPath, "commits");
 
   try {
+    // config se userId aur repoName lo
+    const config = JSON.parse(
+      await fs.readFile(path.join(repoPath, "config.json"), "utf-8")
+    );
+    const { userId, repoName } = config;
+    // Pehle: "commits/" → sab kuch aata tha
+    // Ab: "userId/repoName/commits/" → sirf apna data
+
+     const prefix = `${userId}/${repoName}/commits/`;
     //  S3 se list of objects lo
     const data = await s3.listObjectsV2({
       Bucket: S3_BUCKET,
-      Prefix: "commits/"
+      Prefix:  prefix
     }).promise();
+
 
     const objects = data.Contents;  //[
                                     //   { Key: "commits/abc123/file.txt" },
@@ -22,19 +32,22 @@ async function pullRepo() {
                                     // ]
 
     if (!objects || objects.length === 0) {
-      console.log("No files found in S3");
+      console.log("No files found in S3, Nothing to pull");
       return;
     }
 
     //  har object download karo
     for (const obj of objects) {
       const key = obj.Key; 
-      // Example: commits/abc123/file.txt
+      // key = "userId/repoName/commits/commitId/file.txt"
 
       const parts = key.split("/");
+      // parts[0]=userId, parts[1]=repoName, parts[2]=commits
+      // parts[3]=commitId, parts[4]=fileName
+      const commitId = parts[3];
+      const fileName = parts[4];
 
-      const commitId = parts[1];
-      const fileName = parts[2];
+       if (!fileName) continue;
 
       //  local commit folder
       const commitDir = path.join(commitsPath, commitId);

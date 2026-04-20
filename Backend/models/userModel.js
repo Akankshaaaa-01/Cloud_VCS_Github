@@ -16,7 +16,18 @@ const UserSchema = new Schema({
 
   password: {
     type: String,
-    required: true,
+  },
+
+  // Google se login ke liye — Google ka unique ID
+  googleId: {
+    type: String,
+    default: null   // normal users ke liye null rahega
+  },
+
+  // Google se photo bhi aa sakti hai
+  avatar: {
+    type: String,
+    default: null
   },
 
   // array of repositories (reference)

@@ -27,7 +27,7 @@ const createRepository=async (req,res)=>{
       visibility,
       owner,
       content,
-      issues
+      issues:[]
     });
 
     const result= await newRepository.save();

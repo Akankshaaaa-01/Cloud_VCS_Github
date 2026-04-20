@@ -24,7 +24,10 @@ const CommitSchema = new Schema({
     {
       type: String,
     }
-  ]
+  ],
+  s3Prefix: { 
+    type: String, 
+    default: null }
 
 }, { timestamps: true });
 

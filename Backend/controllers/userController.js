@@ -31,7 +31,7 @@ async function signUp (req,res){
     });
 
     // JWT generate
-    const token = jwt.sign( { id: user._id }, // payload ->mtlb encyrpt krke isiko token bana rhe hain
+    const token = jwt.sign( { id: user._id }, // payload ->mtlb encode krke(not encrypt) isiko token bana rhe hain
        process.env.JWT_SECRET, //payload = { id: "userId" }
       { expiresIn: "1d" }
     );
@@ -92,7 +92,7 @@ const getUserProfile=async (req,res)=>{
     try {
     const { id } = req.params;
 
-    const user = await User.findById(id)
+    const user = await User.findById(id).select("-password");
 
     if (!user) {
       return res.status(404).json({ message: "User not found"});
