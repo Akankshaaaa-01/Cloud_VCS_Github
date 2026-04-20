@@ -26,10 +26,22 @@ yargs(hideBin(process.argv)) //removes the first two default arguments (node pat
 .command("start","Starts a new Server",{},startServer)
 // INIT
 .command(
-  "init",
+  "init <username> <repoName>",
   "Initialize a new repository",
-  {},
-  initRepo
+  (yargs) => {
+    yargs
+      .positional("username", {
+        describe: "Your username", 
+        type: "string"
+      })
+      .positional("repoName", {
+        describe: "Repository name",
+        type: "string"
+      });
+  },
+  (argv) => {
+    initRepo(argv.username, argv.repoName);
+  }
 )
 
 // ADD

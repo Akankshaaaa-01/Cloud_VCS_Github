@@ -1,31 +1,47 @@
-const fs = require("fs").promises;  // file system of Node (async version , can use await due to promises)
-const path = require("path");       // path handling
+const fs = require("fs").promises;
+const path = require("path");
+const mongoose = require("mongoose");
+const User = require("../models/userModel");
+require("dotenv").config();
 
-async function initRepo() {
-
+async function initRepo(username, repoName) {
+  const currentDir = process.cwd();
+  const repoPath = path.resolve(currentDir, ".apnaGit");
+  const commitsPath = path.join(repoPath, "commits");
   
-  const currentDir = process.cwd(); // current working directory 
-  const repoPath = path.resolve(currentDir, ".apnaGit"); // .apnaGit folder ka full path banaya
-  const commitsPath = path.join(repoPath, "commits");  // commits folder ka path (inside .apnaGit)
-
   try {
-    // .apnaGit folder create karo
-    // { recursive: true } → agar parent folder na ho to bhi create kare
+    // DB connect karo — user dhundne ke liye
+    await mongoose.connect(process.env.MONGO_URL);
+
+    // Username se user dhundo
+    const user = await User.findOne({ username });
+
+    if (!user) {
+      console.log(`User "${username}" not found. Please signup first.`);
+      return;
+    }
+
     await fs.mkdir(repoPath, { recursive: true });
     await fs.mkdir(commitsPath, { recursive: true });
-    await fs.writeFile(path.join(repoPath,"config.json"),
-    JSON.stringify({bucket:process.env.S3_BUCKET,
-      userId,repoName
-    },null,2)
+    
+
+    // Config mein userId internally save karo
+    // User ko sirf username dena tha 
+    await fs.writeFile(
+      path.join(repoPath, "config.json"),
+      JSON.stringify({
+        bucket: process.env.S3_BUCKET,
+        userId: user._id.toString(),  // internally ID use hogi
+        username: username,           // reference ke liye
+        repoName
+      }, null, 2) //JSON.stringify(value, replacer, space)
     );
 
-    console.log(`Repository "${repoName}" initialized successfully!`);
-   
+    console.log(`Repository "${repoName}" initialized for user "${username}"!`);
 
   } catch (err) {
-    console.error("Error initializing repository:", err.message);
+    console.error("Error initializing:", err.message);
   }
 }
 
-// export function (so index.js me use ho sake)
 module.exports = { initRepo };
