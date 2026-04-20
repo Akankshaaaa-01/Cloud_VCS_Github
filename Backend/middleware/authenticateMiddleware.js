@@ -33,5 +33,5 @@ const authMiddleware =(req,res,next)=>{
 }
 
 module.exports = {
-  authenticateMiddleware: authMiddleware
+  authMiddleware
 };
