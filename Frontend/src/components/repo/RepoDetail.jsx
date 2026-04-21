@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Folder, Star, GitCommit, Bug, Terminal,
-  Lock, Globe, Pencil, Trash2, ChevronRight
+  Lock, Globe, Pencil, Trash2, FileCode, X
 } from "lucide-react";
 import Navbar from "../Navbar";
 import api from "../../axiosConfig";
@@ -12,11 +12,14 @@ export default function RepoDetail() {
   const navigate = useNavigate();
   const [repo, setRepo] = useState(null);
   const [commits, setCommits] = useState([]);
+  const [files, setFiles] = useState([]);
+  const [selectedFile, setSelectedFile] = useState(null); // { name, content }
+  const [fileLoading, setFileLoading] = useState(false);
   const [isStarred, setIsStarred] = useState(false);
   const [loading, setLoading] = useState(true);
   const userId = localStorage.getItem("userId");
 
-  useEffect(() => { fetchRepo(); fetchCommits(); }, [id]);
+  useEffect(() => { fetchRepo(); fetchCommits(); fetchFiles(); }, [id]);
 
   const fetchRepo = async () => {
     try {
@@ -35,6 +38,23 @@ export default function RepoDetail() {
       const res = await api.get(`/commits/${id}`);
       setCommits(res.data || []);
     } catch (err) { console.error(err); }
+  };
+
+  const fetchFiles = async () => {
+    try {
+      const res = await api.get(`/repo/${id}/files`);
+      setFiles(res.data.files || []);
+    } catch (err) { console.error(err); }
+  };
+
+  const handleFileClick = async (s3Key) => {
+    try {
+      setFileLoading(true);
+      setSelectedFile({ name: s3Key.split("/").pop(), content: null });
+      const res = await api.get(`/repo/${id}/file`, { params: { key: s3Key } });
+      setSelectedFile({ name: s3Key.split("/").pop(), content: res.data.content });
+    } catch (err) { console.error(err); }
+    finally { setFileLoading(false); }
   };
 
   const handleStar = async () => {
@@ -128,7 +148,6 @@ export default function RepoDetail() {
             >
               <Pencil size={13} /> Edit
             </button>
-
             <button
               onClick={handleToggleVisibility}
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg bg-[#21262d] hover:bg-[#2d333b] border border-[#30363d] transition-all text-white"
@@ -136,7 +155,6 @@ export default function RepoDetail() {
               {repo.visibility ? <Lock size={13} className="text-orange-400" /> : <Globe size={13} className="text-green-400" />}
               {repo.visibility ? "Make Public" : "Make Private"}
             </button>
-
             <button
               onClick={handleDelete}
               className="ml-auto flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg hover:bg-red-500/10 border border-transparent hover:border-red-500/30 text-red-400 transition-all"
@@ -145,6 +163,23 @@ export default function RepoDetail() {
             </button>
           </div>
         )}
+
+        {/* ── FILES ── */}
+        <Section icon={<FileCode size={15} className="text-[#58a6ff]" />} title="Files" count={files.length}>
+          {files.length === 0
+            ? <Empty text="No files pushed yet. Use the CLI to push files." />
+            : files.map(f => (
+              <div
+                key={f.s3Key}
+                onClick={() => handleFileClick(f.s3Key)}
+                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-[#21262d] cursor-pointer transition-colors group"
+              >
+                <FileCode size={14} className="text-[#8b949e] shrink-0" />
+                <span className="text-sm text-[#58a6ff] group-hover:underline font-mono">{f.name}</span>
+              </div>
+            ))
+          }
+        </Section>
 
         {/* ── CLI ── */}
         <Section icon={<Terminal size={15} className="text-[#58a6ff]" />} title="CLI Setup">
@@ -196,6 +231,47 @@ export default function RepoDetail() {
         </Section>
 
       </div>
+
+      {/* ── FILE VIEWER MODAL ── */}
+      {selectedFile && (
+        <div
+          className="fixed inset-0 bg-black/75 flex items-center justify-center z-50 p-4"
+          onClick={() => setSelectedFile(null)}
+        >
+          <div
+            className="bg-[#161b22] border border-[#30363d] rounded-xl w-full max-w-3xl max-h-[80vh] flex flex-col"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal header */}
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-[#30363d] shrink-0">
+              <div className="flex items-center gap-2">
+                <FileCode size={15} className="text-[#8b949e]" />
+                <span className="text-sm font-medium text-white font-mono">{selectedFile.name}</span>
+              </div>
+              <button
+                onClick={() => setSelectedFile(null)}
+                className="w-7 h-7 flex items-center justify-center rounded-lg hover:bg-[#21262d] text-[#8b949e] hover:text-white transition-colors"
+              >
+                <X size={15} />
+              </button>
+            </div>
+
+            {/* Modal body */}
+            <div className="overflow-auto flex-1">
+              {fileLoading ? (
+                <div className="flex items-center justify-center h-40 gap-3">
+                  <div className="w-4 h-4 border-2 border-[#58a6ff] border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm text-[#8b949e]">Loading file…</span>
+                </div>
+              ) : (
+                <pre className="p-5 text-sm text-[#c9d1d9] font-mono leading-relaxed whitespace-pre-wrap break-words">
+                  {selectedFile.content}
+                </pre>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
