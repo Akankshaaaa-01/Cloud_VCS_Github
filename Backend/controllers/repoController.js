@@ -60,20 +60,24 @@ const getAllRepositories= async(req,res)=>{
     }
 }
 
-const fetchRepositoryById= async(req,res)=>{
-    const { id: repoID } = req.params;
-    try{
-        const repository= await Repository.find({_id:repoID})
-        .populate("owner")
-        .populate("issues");
+const fetchRepositoryById = async (req, res) => {
+  const { id: repoID } = req.params;
+  try {
+    const repository = await Repository.findById(repoID) // find ki jagah findById
+      .populate("owner")
+      .populate("issues");
 
-        res.json(repository)
-
-    } catch(err){
-         console.error("Error fetching repository: ",err.message);
-        res.status(500).json({error: err.message});
+    if (!repository) {
+      return res.status(404).json({ message: "Repository not found" });
     }
-}
+
+    res.json(repository); // array nahi — seedha object
+
+  } catch (err) {
+    console.error("Error fetching repository: ", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
 
 const fetchRepositoryByName=async(req,res)=>{
    const {name: repoName} =req.params

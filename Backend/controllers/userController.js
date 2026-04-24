@@ -174,8 +174,36 @@ const deleteUserProfile=async (req,res)=>{
   }
 }
 
+const getActivity = async (req, res) => {
+  try {
+    const Commit = require("../models/commitModel");
+    
+    const commits = await Commit.find({ 
+      user: req.params.id 
+    }).select("createdAt");
+
+    // Date wise count karo
+    const activityMap = {};
+    commits.forEach(commit => {
+      const date = new Date(commit.createdAt)
+        .toISOString().split("T")[0];
+      activityMap[date] = (activityMap[date] || 0) + 1;
+    });
+
+    const data = Object.entries(activityMap).map(
+      ([date, count]) => ({ date, count })
+    );
+
+    res.status(200).json(data);
+
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+
 module.exports={
     getAllUsers,signUp,login,getUserProfile,
     updateUserProfile,
-    deleteUserProfile
+    deleteUserProfile,getActivity
 }

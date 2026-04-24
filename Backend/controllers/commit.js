@@ -2,6 +2,27 @@ const fs = require("fs").promises;
 const path = require("path");
 const crypto = require("crypto"); // hash generate karne ke liye
 
+// 🔥 ADD THIS (new helper — folder support)
+async function copyRecursive(src, dest) {
+  const stat = await fs.stat(src);
+
+  if (stat.isDirectory()) {
+    await fs.mkdir(dest, { recursive: true });
+
+    const files = await fs.readdir(src);
+
+    for (const file of files) {
+      await copyRecursive(
+        path.join(src, file),
+        path.join(dest, file)
+      );
+    }
+  } else {
+    await fs.mkdir(path.dirname(dest), { recursive: true });
+    await fs.copyFile(src, dest);
+  }
+}
+
 async function commitRepo(message) {
 
   const currentDir = process.cwd();
@@ -24,13 +45,13 @@ async function commitRepo(message) {
     const commitDir = path.join(commitsPath, commitId);
     await fs.mkdir(commitDir, { recursive: true });
 
-
     // har file ko staging se commit folder me copy karo
     for (const file of files) {
       const src = path.join(stagingPath, file);
       const dest = path.join(commitDir, file);
 
-      await fs.copyFile(src, dest);
+      // 🔥 CHANGE ONLY THIS LINE
+      await copyRecursive(src, dest);
     }
 
     const metadata = {
@@ -46,7 +67,7 @@ async function commitRepo(message) {
 
      // Staging clear karo — warna agle commit mein bhi aayengi purani files
     for (const file of files) {
-      await fs.unlink(path.join(stagingPath, file));
+      await fs.rm(path.join(stagingPath, file), { recursive: true, force: true }); // 🔥 small fix (folder support)
     }
 
     console.log(`Commit ID: ${commitId} created for your commit with message: ${message}`);

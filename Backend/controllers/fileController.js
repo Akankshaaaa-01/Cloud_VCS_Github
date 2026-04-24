@@ -3,41 +3,60 @@ const { s3, S3_BUCKET } = require("../config/aws-config");
 const Commit = require("../models/commitModel");
 const Repository = require("../models/repoModel");
 
-// GET /repo/:id/files — latest commit ki files list
+// GET /repo/:id/files — saare commits ki merged files list
 const getRepoFiles = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const repo = await Repository.findById(id).populate("owner");
+    const repo = await Repository.findById(id);
     if (!repo) return res.status(404).json({ message: "Repo not found" });
 
-    // Latest commit dhundo
-    const latestCommit = await Commit.findOne({ repository: id })
+    // Saare commits lo — latest pehle
+    const allCommits = await Commit.find({ repository: id })
       .sort({ createdAt: -1 });
 
-    if (!latestCommit) {
+    if (allCommits.length === 0) {
       return res.status(200).json({ files: [] });
     }
 
-    // S3 se us commit ki files list karo
-    const prefix = latestCommit.s3Prefix ;
-    const data = await s3.listObjectsV2({
-      Bucket: S3_BUCKET,
-      Prefix: prefix,
-    }).promise();
+    // Map use karo — same naam ki file ka latest version rakho
+    // agar file1.js commit1 aur commit2 dono mein hai
+    // toh latest wala rakho, purana overwrite ho jaayega
+    const fileMap = new Map();
 
-    console.log("Prefix:", prefix);
-    console.log("S3 Data:", data.Contents);
+    // Reverse order — purane pehle, naye baad mein
+    // Taaki naya version overwrite kare purane ko
+    const commitsOldFirst = [...allCommits].reverse();
 
-    const files = (data.Contents || [])
-      .map(obj => obj.Key)
-      .filter(key => !key.endsWith("commit.json")) // metadata skip
-      .map(key => ({
-        name: key.split("/").pop(),
-        s3Key: key,
-      }));
+    for (const commit of commitsOldFirst) {
+      if (!commit.s3Prefix) continue;
 
-    res.status(200).json({ files, commitId: latestCommit._id, message: latestCommit.message });
+      const prefix = commit.s3Prefix + "/";
+
+      const data = await s3.listObjectsV2({
+        Bucket: S3_BUCKET,
+        Prefix: prefix,
+      }).promise();
+
+      const files = (data.Contents || [])
+        .map(obj => obj.Key)
+        .filter(key => !key.endsWith("commit.json"))
+        .map(key => ({
+          name: key.split("/").pop(),
+          path: key.slice(prefix.length).replace(/\\/g, "/"),
+          s3Key: key,
+        }));
+
+      // fileMap mein daalo — same path ka latest version rahega
+      for (const file of files) {
+        fileMap.set(file.path, file);
+      }
+    }
+
+    res.status(200).json({
+      files: Array.from(fileMap.values()),
+      totalCommits: allCommits.length
+    });
 
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -1,10 +1,22 @@
 const fs = require("fs").promises;
 const path = require("path");
-const { s3, S3_BUCKET } = require("../config/aws-config"); // AWS config file
+const { s3, S3_BUCKET } = require("../config/aws-config");
 const Commit = require("../models/commitModel");
 const Repository = require("../models/repoModel");
 const mongoose = require("mongoose");
 require("dotenv").config();
+
+// Recurisve file read karne ke liye function
+async function getAllFiles(dir) {
+  const entries = await fs.readdir(dir, { withFileTypes: true });
+
+  const files = await Promise.all(entries.map(entry => {
+    const res = path.resolve(dir, entry.name);
+    return entry.isDirectory() ? getAllFiles(res) : res;
+  }));
+
+  return files.flat();
+}
 
 async function pushRepo() {
 
@@ -20,82 +32,106 @@ async function pushRepo() {
     );
     const { userId, repoName } = config;
 
+    // pushed commits track karne ke liye
+    if (!config.pushedCommits) {
+      config.pushedCommits = [];
+    }
+
     if (!userId || !repoName) {
-      console.log("Config missing. Run init again with userId and repoName.");
+      console.log("Config missing. Run init again.");
       return;
     }
 
-    //saare commits read karo
-    const commits = await fs.readdir(commitsPath);
+    const commits = (await fs.readdir(commitsPath)).sort();
 
     if (commits.length === 0) {
       console.log("No commits to push");
       return;
     }
 
-    // MongoDB connect karo — commit record save karne ke liye
     await mongoose.connect(process.env.MONGO_URL);
 
-    // Repo dhundho DB mein — ObjectId chahiye
-    const repo = await Repository.findOne({ 
-      name: repoName, 
-      owner: userId 
+    const repo = await Repository.findOne({
+      name: repoName,
+      owner: userId
     });
 
     if (!repo) {
-      console.log(`Repo: "${repoName}" not found in DB.`);
-      console.log(`Please create a Repository first!.`);
+      console.log(`Repo "${repoName}" not found`);
       return;
     }
 
-
-    // har commit folder ke liye -> folder level 
     for (const commitId of commits) {
-    const commitDir = path.join(commitsPath, commitId);
 
-    // commit ke andar files read karo
-    const files = await fs.readdir(commitDir);
-    const filesChanged = [];
+      if (config.pushedCommits.includes(commitId)) {
+        console.log(`Skipping ${commitId}`);
+        continue;
+      }
 
-      for (const file of files) {  //files in each folder
-        if (file === "commit.json") continue;
-        const filePath = path.join(commitDir, file);
-        // file content read karo
+      const commitDir = path.join(commitsPath, commitId);
+
+      const metadataPath = path.join(commitDir, "commit.json");
+      try {
+        await fs.access(metadataPath);
+      } catch {
+        console.log(`Skipping invalid commit: ${commitId}`);
+        continue;
+      }
+
+      // ✅ FIX: only commit folder files
+      const files = await getAllFiles(commitDir);
+
+      const filesChanged = [];
+
+      for (const filePath of files) {
+
+        if (filePath.endsWith("commit.json")) continue;
+
+        // relative path from commitDir
+        const relativePath = path.relative(commitDir, filePath);
+
+        const normalizedFile = relativePath.replace(/\\/g, "/");
+
         const fileContent = await fs.readFile(filePath);
-         // S3 path mein userId aur repoName — multi user support
-        const s3Key = `${userId}/${repoName}/commits/${commitId}/${file}`;
 
-        // S3 upload
+        const s3Key = `${userId}/${repoName}/commits/${commitId}/${normalizedFile}`;
+
         await s3.upload({
           Bucket: S3_BUCKET,
-          Key: s3Key, // S3 path
+          Key: s3Key,
           Body: fileContent
         }).promise();
 
-        filesChanged.push(file);
+        filesChanged.push(normalizedFile);
         console.log(`Uploaded: ${s3Key}`);
       }
 
-      // commit metadata bhi read karo
-      const metadataContent = await fs.readFile(path.join(commitDir, "commit.json"), "utf-8");
-      const metadata = JSON.parse(metadataContent);
+      const metadata = JSON.parse(
+        await fs.readFile(metadataPath, "utf-8")
+      );
 
-      // MongoDB mein commit record save karo
       await Commit.create({
         message: metadata.message,
-        repository: repo._id,  // ← ObjectId — schema expect karta hai
-        user: userId,           // ← userId string — schema ObjectId expect karta hai
+        repository: repo._id,
+        user: new mongoose.Types.ObjectId(userId),
         filesChanged,
         s3Prefix: `${userId}/${repoName}/commits/${commitId}`
       });
-      console.log(`Commit saved to DB!`);
 
+      console.log("Commit saved to DB");
+
+      config.pushedCommits.push(commitId);
     }
 
-    console.log("All commits pushed to S3 successfully!");
+    await fs.writeFile(
+      path.join(repoPath, "config.json"),
+      JSON.stringify(config, null, 2)
+    );
+
+    console.log("Push complete");
 
   } catch (err) {
-    console.error("Error pushing to S3:", err.message);
+    console.error("Error:", err.message);
   }
 }
 
