@@ -24,7 +24,7 @@ export default function RepoDetail() {
   const fetchRepo = async () => {
     try {
       const res = await api.get(`/repo/${id}`);
-      const repoData = res.data[0];
+      const repoData = res.data;
       setRepo(repoData);
       const userRes = await api.get(`/userProfile/${userId}`);
       const starred = userRes.data.starRepos?.map(s => s.toString()) || [];
@@ -97,13 +97,88 @@ export default function RepoDetail() {
     </div>
   );
 
-  const isOwner = repo.owner?._id === userId || repo.owner === userId;
+  const isOwner = repo.owner?._id?.toString() === userId || repo.owner === userId;
   const cliCmds = [
     `node index.js init ${repo.owner?.username} ${repo.name}`,
     `node index.js add <file>`,
     `node index.js commit "message"`,
     `node index.js push`,
   ];
+
+      const timeAgo = (date) => {
+    const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+
+    if (seconds < 60) return `${seconds}s ago`;
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 2592000) return `${Math.floor(seconds / 86400)}d ago`;
+
+    return new Date(date).toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "short",
+        year: "numeric"
+    });
+    };
+
+  // build tree
+const buildTree = (files) => {
+  const tree = {};
+
+  files.forEach(f => {
+    if (!f.path) return;
+
+    const parts = f.path.split("/");
+    let current = tree;
+
+    parts.forEach((part, i) => {
+      if (!current[part]) {
+        current[part] = i === parts.length - 1 ? { file: f } : {};
+      }
+      current = current[part];
+    });
+  });
+
+  return tree;
+};
+
+// render tree
+const renderTree = (node, level = 0) => {
+  return Object.entries(node).map(([key, value]) => {
+
+    // FILE
+    if (value.file) {
+      return (
+        <div
+          key={value.file.s3Key}
+          onClick={() => handleFileClick(value.file.s3Key)}
+          className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[#21262d] cursor-pointer transition-colors group"
+          style={{ paddingLeft: 12 + level * 14 }}
+        >
+          <FileCode size={14} className="text-[#8b949e]" />
+          <span className="text-sm text-[#58a6ff] group-hover:underline font-mono">
+            {key}
+          </span>
+        </div>
+      );
+    }
+
+
+    // FOLDER
+    return (
+      <div key={key}>
+        <div
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-[#c9d1d9]"
+          style={{ paddingLeft: 8 + level * 14 }}
+        >
+          <Folder size={14} className="text-[#8b949e]" />
+          <span className="font-medium">{key}</span>
+        </div>
+
+        {renderTree(value, level + 1)}
+      </div>
+    );
+  });
+};
 
   return (
     <div className="bg-[#0d1117] min-h-screen text-white">
@@ -168,16 +243,10 @@ export default function RepoDetail() {
         <Section icon={<FileCode size={15} className="text-[#58a6ff]" />} title="Files" count={files.length}>
           {files.length === 0
             ? <Empty text="No files pushed yet. Use the CLI to push files." />
-            : files.map(f => (
-              <div
-                key={f.s3Key}
-                onClick={() => handleFileClick(f.s3Key)}
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg hover:bg-[#21262d] cursor-pointer transition-colors group"
-              >
-                <FileCode size={14} className="text-[#8b949e] shrink-0" />
-                <span className="text-sm text-[#58a6ff] group-hover:underline font-mono">{f.name}</span>
-              </div>
-            ))
+            : (() => {
+                const tree = buildTree(files);
+                return renderTree(tree);
+                })()
           }
         </Section>
 
@@ -202,7 +271,7 @@ export default function RepoDetail() {
                 key={c._id}
                 primary={c.message}
                 secondary={`${c.filesChanged?.length || 0} file${c.filesChanged?.length !== 1 ? "s" : ""} changed`}
-                right={new Date(c.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+               right={timeAgo(c.createdAt)}
               />
             ))
           }

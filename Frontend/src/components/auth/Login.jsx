@@ -75,7 +75,7 @@ const Login=()=>{
           </button>
     </form >
     <p className="text-gray-400 text-sm text-center mt-4">
-          New to Github?&nbsp;
+          New to CodeVault?&nbsp;
           <Link to="/signup" className="text-blue-600 cursor-pointer hover:underline">
             Create an account
           </Link>
